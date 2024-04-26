@@ -129,6 +129,39 @@ install_optional_tools() {
     fi
 }
 
+generate_ssh_key() {
+    read -p "Enter your email for the SSH key: " email
+    ssh_key_path="$HOME/.ssh/id_rsa"
+
+    if [[ -f "$ssh_key_path" ]]; then
+        echo "An SSH key already exists at $ssh_key_path."
+        read -p "Do you want to overwrite it? (y/n): " overwrite
+        if [[ $overwrite != "y" ]]; then
+            echo "Keeping existing SSH key."
+            return
+        fi
+    fi
+
+    echo "Generating new SSH key..."
+    ssh-keygen -t rsa -b 4096 -C "$email" -f "$ssh_key_path" -N ""
+
+    case "$(uname -s)" in
+        Linux*)     pbcopy_command="xclip -selection clipboard";;
+        Darwin*)    pbcopy_command="pbcopy";;
+        CYGWIN*|MINGW*) pbcopy_command="clip";;
+        *)          pbcopy_command="";;
+    esac
+
+    if [[ -n "$pbcopy_command" ]]; then
+        cat "${ssh_key_path}.pub" | $pbcopy_command
+        echo "SSH public key has been copied to clipboard."
+    else
+        echo "Clipboard support is not available on this system."
+        echo "SSH public key:"
+        cat "${ssh_key_path}.pub"
+    fi
+}
+
 echo "Detecting your operating system..."
 detect_os
 echo "If the detected OS is incorrect, please select your OS manually from the list below:"
@@ -199,6 +232,11 @@ esac
 echo "You have selected: $os"
 install_git $os
 install_optional_tools $os
+
+read -p "Do you want to generate an SSH key? (y/n): " generate_key
+if [[ $generate_key == "y" ]]; then
+    generate_ssh_key
+fi
 
 echo "Environment setup is complete. Press any key to continue."
 read -p ""
